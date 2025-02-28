@@ -1,0 +1,9 @@
+flask==2.3.3
+flask-sqlalchemy==3.0.5
+gunicorn==21.2.0
+# Additional dependencies for production deployment
+python-dotenv==1.0.0
+chart.js
+chartjs-adapter-date-fns
+Flask-WTF
+WTForms

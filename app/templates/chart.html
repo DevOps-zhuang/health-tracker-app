@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blood Pressure Chart</title>
+    <!-- Use Chart.js version 3 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .chart-container {
+            width: 80%;
+            margin: 20px auto;
+            height: 400px;
+        }
+        .btn-info {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 15px;
+            background-color: #5bc0de;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Blood Pressure Chart</h1>
+    
+    <div class="chart-container">
+        <canvas id="bpChart"></canvas>
+    </div>
+    
+    <a href="/" class="btn-info">Back to Home</a>
+    
+    <script>
+        // Get the canvas element
+        const ctx = document.getElementById('bpChart').getContext('2d');
+        
+        // Prepare the data
+        const rawTimestamps = {{ timestamps|tojson }};
+        const systolicValues = {{ systolic_values|tojson }};
+        const diastolicValues = {{ diastolic_values|tojson }};
+        
+        // Format timestamps to YYYY/MM/DD format
+        const timestamps = rawTimestamps.map(timestamp => {
+            // Parse the timestamp and format it to YYYY/MM/DD
+            const date = new Date(timestamp);
+            return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
+        });
+        
+        // Log data for debugging
+        console.log('Formatted Timestamps:', timestamps);
+        console.log('Systolic:', systolicValues);
+        console.log('Diastolic:', diastolicValues);
+        
+        // Group data by date
+        const dataByDate = {};
+        
+        for (let i = 0; i < timestamps.length; i++) {
+            const date = timestamps[i];
+            
+            if (!dataByDate[date]) {
+                dataByDate[date] = {
+                    systolicValues: [],
+                    diastolicValues: []
+                };
+            }
+            
+            dataByDate[date].systolicValues.push(systolicValues[i]);
+            dataByDate[date].diastolicValues.push(diastolicValues[i]);
+        }
+        
+        // Calculate average values for each date
+        const uniqueDates = Object.keys(dataByDate).sort();
+        const avgSystolicByDate = uniqueDates.map(date => {
+            const values = dataByDate[date].systolicValues;
+            return values.reduce((sum, val) => sum + val, 0) / values.length;
+        });
+        
+        const avgDiastolicByDate = uniqueDates.map(date => {
+            const values = dataByDate[date].diastolicValues;
+            return values.reduce((sum, val) => sum + val, 0) / values.length;
+        });
+        
+        // Create datasets for the chart
+        const systolicData = uniqueDates.map((date, index) => ({
+            x: date,
+            y: avgSystolicByDate[index]
+        }));
+        
+        const diastolicData = uniqueDates.map((date, index) => ({
+            x: date,
+            y: avgDiastolicByDate[index]
+        }));
+        
+        // Create the chart
+        const bpChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: uniqueDates,
+                datasets: [
+                    {
+                        label: 'Systolic',
+                        data: systolicData.map(item => item.y),
+                        borderColor: 'blue',
+                        backgroundColor: systolicData.map(data => data.y > 140 ? 'red' : 'blue'),
+                        pointRadius: 6,
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Diastolic',
+                        data: diastolicData.map(item => item.y),
+                        borderColor: 'green',
+                        backgroundColor: diastolicData.map(data => data.y > 100 ? 'red' : 'green'),
+                        pointRadius: 6,
+                        tension: 0.1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Date (YYYY/MM/DD)'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Blood Pressure (mmHg)'
+                        },
+                        beginAtZero: false,
+                        min: 40,
+                        max: 220
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const datasetLabel = context.dataset.label || '';
+                                const value = context.parsed.y.toFixed(1);
+                                return `${datasetLabel}: ${value} mmHg`;
+                            }
+                        }
+                    },
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Blood Pressure Over Time'
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
+<!-- Generated by Copilot -->
