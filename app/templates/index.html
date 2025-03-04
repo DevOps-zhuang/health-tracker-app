@@ -5,6 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <title>Health Tracker</title>
+    <style>
+        .action-buttons {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 15px;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+        .btn-info {
+            background-color: #5bc0de;
+        }
+        .btn-import {
+            background-color: #28a745;
+        }
+    </style>
 </head>
 <body>
     <h1>Health Tracker</h1>
@@ -46,6 +66,11 @@
         <button type="submit">Add Entry</button>
     </form>
 
+    <div class="action-buttons">
+        <a href="/chart" class="btn btn-info">View Blood Pressure Chart</a>
+        <a href="/import" class="btn btn-import">Import Data</a>
+    </div>
+
     <h2>Existing Entries</h2>
     <table class="table">
         <thead>
@@ -74,8 +99,6 @@
             {% endfor %}
         </tbody>
     </table>
-    
-    <a href="/chart" class="btn btn-info">View Blood Pressure Chart</a>
     
     <script src="script.js"></script>
 </body>
