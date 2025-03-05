@@ -30,6 +30,17 @@
             border: 1px solid #ddd;
             border-radius: 5px;
         }
+        .format-info {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+        }
+        
+        .format-info.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -53,8 +64,9 @@
                 <li><strong>CSV</strong>: Comma-separated values file</li>
                 <li><strong>Excel</strong>: .xlsx or .xls spreadsheet</li>
                 <li><strong>Text</strong>: Custom delimited text file</li>
+                <li><strong>Image</strong>: JPG or PNG files containing blood pressure readings</li>
             </ul>
-            <p>The file should contain the following columns:</p>
+            <p>For CSV, Excel, and Text files, the file should contain the following columns:</p>
             <ul>
                 <li><strong>timestamp</strong>: Date and time of the reading</li>
                 <li><strong>systolic</strong>: Systolic blood pressure (100-200)</li>
@@ -62,12 +74,18 @@
                 <li><strong>heart_rate</strong>: Heart rate (50-200)</li>
                 <li><strong>tags</strong>: Optional tags for the reading</li>
             </ul>
+            <p>For Image files:</p>
+            <ul>
+                <li>The image should contain clear, readable numbers</li>
+                <li>Blood pressure should be in the format "120/80"</li>
+                <li>Heart rate (optional) should be clearly labeled (e.g., "HR: 75" or "75 BPM")</li>
+            </ul>
         </div>
         
         <form action="/import" method="POST" enctype="multipart/form-data">
             <div class="form-group">
                 <label for="file">Select File:</label>
-                <input type="file" id="file" name="file" required>
+                <input type="file" id="file" name="file" required accept=".csv,.xlsx,.xls,.txt,.jpg,.jpeg,.png">
             </div>
             
             <div class="format-options">
@@ -78,19 +96,32 @@
                         <option value="csv">CSV</option>
                         <option value="excel">Excel</option>
                         <option value="text">Text (Custom Delimiter)</option>
+                        <option value="image">Image</option>
                     </select>
                 </div>
                 
-                <div class="form-group" id="delimiter-group">
-                    <label for="delimiter">Delimiter:</label>
-                    <input type="text" id="delimiter" name="delimiter" value="," maxlength="1">
-                    <p class="help-text">Character used to separate values (default: comma)</p>
+                <div id="csv-text-options" class="format-info">
+                    <div class="form-group" id="delimiter-group">
+                        <label for="delimiter">Delimiter:</label>
+                        <input type="text" id="delimiter" name="delimiter" value="," maxlength="1">
+                        <p class="help-text">Character used to separate values (default: comma)</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="date_format">Date Format:</label>
+                        <input type="text" id="date_format" name="date_format" value="%Y-%m-%d %H:%M:%S">
+                        <p class="help-text">Format: %Y (year), %m (month), %d (day), %H (hour), %M (minute), %S (second)</p>
+                    </div>
                 </div>
-                
-                <div class="form-group">
-                    <label for="date_format">Date Format:</label>
-                    <input type="text" id="date_format" name="date_format" value="%Y-%m-%d %H:%M:%S">
-                    <p class="help-text">Format: %Y (year), %m (month), %d (day), %H (hour), %M (minute), %S (second)</p>
+
+                <div id="image-options" class="format-info">
+                    <p class="help-text">
+                        For best results:<br>
+                        - Ensure the image is clear and well-lit<br>
+                        - Blood pressure numbers should be clearly visible<br>
+                        - Numbers should be in the format "120/80"<br>
+                        - Heart rate (if included) should be labeled as "HR" or "BPM"
+                    </p>
                 </div>
             </div>
             
@@ -100,19 +131,31 @@
     </div>
     
     <script>
-        // Show/hide delimiter based on format selection
+        // Show/hide format-specific options based on selection
         document.getElementById('format').addEventListener('change', function() {
+            const format = this.value;
+            const csvTextOptions = document.getElementById('csv-text-options');
+            const imageOptions = document.getElementById('image-options');
             const delimiterGroup = document.getElementById('delimiter-group');
-            delimiterGroup.style.display = (this.value === 'text') ? 'block' : 'none';
+            
+            // Hide all format-specific options first
+            csvTextOptions.classList.remove('active');
+            imageOptions.classList.remove('active');
+            
+            // Show relevant options based on selected format
+            if (format === 'csv' || format === 'text') {
+                csvTextOptions.classList.add('active');
+                delimiterGroup.style.display = format === 'text' ? 'block' : 'none';
+            } else if (format === 'image') {
+                imageOptions.classList.add('active');
+            }
         });
         
         // Initialize visibility on page load
         document.addEventListener('DOMContentLoaded', function() {
             const format = document.getElementById('format');
-            const delimiterGroup = document.getElementById('delimiter-group');
-            delimiterGroup.style.display = (format.value === 'text') ? 'block' : 'none';
+            format.dispatchEvent(new Event('change'));
         });
     </script>
 </body>
 </html>
-<!-- Generated by Copilot -->

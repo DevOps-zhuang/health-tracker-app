@@ -180,15 +180,15 @@ def import_data():
             return redirect(request.url)
             
         # Check if the file type is allowed
-        allowed_extensions = {'csv', 'xlsx', 'xls', 'txt'}
+        allowed_extensions = {'csv', 'xlsx', 'xls', 'txt', 'jpg', 'jpeg', 'png'}
         file_ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
         
         if file_ext not in allowed_extensions:
-            flash(f'File type not allowed. Please upload a CSV, Excel, or TXT file.')
+            flash(f'File type not allowed. Please upload a CSV, Excel, TXT, or image file (JPG, PNG).')
             return redirect(request.url)
             
         # Create upload directory if it doesn't exist
-        upload_dir = os.path.join(current_app.root_path, 'uploads')
+        upload_dir = os.path.join(current_app.root_path, '..', 'uploads')
         os.makedirs(upload_dir, exist_ok=True)
         
         # Save the file
@@ -207,6 +207,8 @@ def import_data():
                 import_format = 'csv'
             elif file_ext in ['xlsx', 'xls']:
                 import_format = 'excel'
+            elif file_ext in ['jpg', 'jpeg', 'png']:
+                import_format = 'image'
             else:
                 import_format = 'text'
         
@@ -217,6 +219,8 @@ def import_data():
                 results = DataImporter.import_from_csv(filepath, date_format=date_format)
             elif import_format == 'excel':
                 results = DataImporter.import_from_excel(filepath)
+            elif import_format == 'image':
+                results = DataImporter.import_from_image(filepath)
             elif import_format == 'text':
                 results = DataImporter.import_from_text(filepath, delimiter=delimiter, date_format=date_format)
             else:
@@ -232,6 +236,12 @@ def import_data():
                     flash(f'Error: {error}')
                 if len(results['errors']) > 5:
                     flash(f'...and {len(results["errors"]) - 5} more errors')
+            
+            # Clean up the uploaded file
+            try:
+                os.remove(filepath)
+            except Exception as e:
+                current_app.logger.warning(f"Could not remove temporary file {filepath}: {e}")
                     
             return redirect(url_for('main.index'))
             

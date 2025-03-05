@@ -1,7 +1,7 @@
 import csv
 import pandas as pd
-import datetime
-from flask import current_app, flash
+from datetime import datetime
+from flask import current_app
 from .models import HealthData, db
 
 class DataImporter:
@@ -43,10 +43,6 @@ class DataImporter:
         """
         Import health data from a CSV file.
         
-        Expected CSV format:
-        timestamp,systolic,diastolic,heart_rate,tags
-        2023-01-01 12:00:00,120,80,75,morning
-        
         Args:
             file_path (str): Path to the CSV file
             date_format (str): Format of the date/time in the CSV
@@ -61,16 +57,35 @@ class DataImporter:
         }
         
         try:
-            with open(file_path, 'r', encoding='utf-8') as csvfile:
-                reader = csv.DictReader(csvfile)
+            with open(file_path, 'r', encoding='utf-8-sig') as csvfile:
+                # Try to detect if the file has headers
+                first_line = csvfile.readline().strip()
+                csvfile.seek(0)  # Reset file pointer
+                
+                has_headers = '测量时间' in first_line or 'timestamp' in first_line.lower()
+                reader = csv.reader(csvfile)
+                
+                if has_headers:
+                    next(reader)  # Skip header row
+                
                 for row in reader:
                     try:
-                        # Parse values from the row
-                        timestamp_str = row.get('timestamp', '').strip()
-                        systolic = int(float(row.get('systolic', 0)))
-                        diastolic = int(float(row.get('diastolic', 0)))
-                        heart_rate = int(float(row.get('heart_rate', 0)))
-                        tags = row.get('tags', '').strip()
+                        if len(row) < 4:
+                            results['failure'] += 1
+                            results['errors'].append(f"Row has insufficient values: {row}")
+                            continue
+                            
+                        # Skip rows with placeholder values
+                        if '--' in row:
+                            results['failure'] += 1
+                            results['errors'].append(f"Row contains placeholder values: {row}")
+                            continue
+                        
+                        # Parse values from the row (timestamp, systolic, diastolic, heart_rate)
+                        timestamp_str = row[0].strip()
+                        systolic = int(float(row[1]))
+                        diastolic = int(float(row[2]))
+                        heart_rate = int(float(row[3]))
                         
                         # Validate data
                         is_valid, error_msg = cls.validate_data(systolic, diastolic, heart_rate)
@@ -81,7 +96,7 @@ class DataImporter:
                         
                         # Parse timestamp
                         try:
-                            timestamp = datetime.datetime.strptime(timestamp_str, date_format)
+                            timestamp = datetime.strptime(timestamp_str, date_format)
                         except ValueError:
                             results['failure'] += 1
                             results['errors'].append(f"Invalid timestamp format: {timestamp_str}")
@@ -92,7 +107,6 @@ class DataImporter:
                             systolic=systolic,
                             diastolic=diastolic,
                             heart_rate=heart_rate,
-                            tags=tags,
                             timestamp=timestamp
                         )
                         
@@ -105,14 +119,15 @@ class DataImporter:
                         results['errors'].append(f"Error processing row: {str(e)}")
                 
                 # Commit all valid entries
-                db.session.commit()
+                if results['success'] > 0:
+                    db.session.commit()
                 
         except Exception as e:
             db.session.rollback()
             results['errors'].append(f"Fatal error during import: {str(e)}")
         
         return results
-    
+
     @classmethod
     def import_from_excel(cls, file_path, sheet_name=0, date_format=None):
         """
@@ -162,7 +177,7 @@ class DataImporter:
                         continue
                     
                     # Ensure timestamp is datetime
-                    if not isinstance(timestamp, (datetime.datetime, pd.Timestamp)):
+                    if not isinstance(timestamp, (datetime, pd.Timestamp)):
                         results['failure'] += 1
                         results['errors'].append(f"Invalid timestamp format: {timestamp}")
                         continue
@@ -189,7 +204,8 @@ class DataImporter:
                     results['errors'].append(f"Error processing row: {str(e)}")
             
             # Commit all valid entries
-            db.session.commit()
+            if results['success'] > 0:
+                db.session.commit()
             
         except Exception as e:
             db.session.rollback()
@@ -257,7 +273,7 @@ class DataImporter:
                         
                         # Parse timestamp
                         try:
-                            timestamp = datetime.datetime.strptime(timestamp_str, date_format)
+                            timestamp = datetime.strptime(timestamp_str, date_format)
                         except ValueError:
                             results['failure'] += 1
                             results['errors'].append(f"Line {line_num}: Invalid timestamp format: {timestamp_str}")
@@ -281,7 +297,8 @@ class DataImporter:
                         results['errors'].append(f"Line {line_num}: {str(e)}")
                 
                 # Commit all valid entries
-                db.session.commit()
+                if results['success'] > 0:
+                    db.session.commit()
                 
         except Exception as e:
             db.session.rollback()
@@ -289,4 +306,83 @@ class DataImporter:
         
         return results
 
+    @classmethod
+    def import_from_image(cls, file_path):
+        """
+        Import health data from an image file.
+        This is a placeholder for future implementation using OpenAI services.
+        
+        Args:
+            file_path (str): Path to the image file
+            
+        Returns:
+            dict: Import results with counts of success, failures, and errors
+        """
+        results = {
+            'success': 0,
+            'failure': 0,
+            'errors': ['Image import feature is not yet implemented. Will be supported using OpenAI services in the future.']
+        }
+        return results
+
 # Generated by Copilot
+
+import csv
+from datetime import datetime
+
+data = [
+    ["测量时间", "高压(mmHg)", "低压(mmHg)", "心率(bpm)"],
+    ["2025-03-04 07:45:00", 127, 83, 65],
+    ["2025-03-04 18:20:00", 132, 90, 66],
+    ["2025-03-03 07:35:00", 129, 83, 66],
+    ["2025-03-03 19:20:00", 121, 79, 63],
+    ["2025-03-03 11:57:00", 122, 83, 60],
+    ["2025-03-03 16:31:00", 136, 83, 61],
+    ["2025-03-02 21:20:00", 140, 94, 65],
+    ["2025-03-02 20:28:00", 130, 89, 67],
+    ["2025-03-01 23:31:00", 133, 92, 65],
+    ["2025-03-02 08:16:00", 134, 93, 66],
+    ["2025-03-02 10:45:00", 121, 77, 60],
+    ["2025-03-02 20:43:00", 133, 86, 71],
+    ["2025-03-02 23:13:00", 125, 83, 65],
+    ["2025-03-01 09:00:00", 144, 93, 68],
+    ["2025-03-01 22:56:00", 131, 87, 65],
+    ["2025-02-28 07:42:00", 136, 87, 73],
+    ["2025-02-28 20:47:00", 120, 77, 73],
+    ["2025-02-28 23:33:00", 113, 74, 66],
+    ["2025-02-27 21:12:00", 135, 88, 60],
+    ["2025-02-27 21:13:00", 136, 96, 63],
+    ["2025-02-26 07:32:00", 138, 94, 67],
+    ["2025-02-26 13:03:00", 130, 86, 60],
+    ["2025-02-26 20:15:00", 137, 91, 64],
+    ["2025-02-26 20:16:00", 134, 91, 63],
+    ["2025-02-25 00:06:00", 121, 83, 62],
+    ["2025-02-25 07:40:00", 141, 101, 68],
+    ["2025-02-25 22:03:00", 126, 83, 62],
+    ["2025-02-25 23:38:00", 131, 85, 61],
+    ["2025-02-24 08:01:00", 125, 85, 64],
+    ["2025-02-24 19:44:00", 136, 88, 64],
+    ["2025-02-23 07:28:00", 126, 81, 68],
+    ["2025-02-23 11:13:00", 111, 78, 64],
+    ["2025-02-23 11:59:00", 124, 84, 66],
+    ["2025-02-23 22:02:00", 131, 81, 62],
+    ["2025-02-22 00:00:00", "--", "--", "--"],
+    ["2025-02-21 07:28:00", 143, 95, 62],
+    ["2025-02-21 15:30:00", 150, 101, 65],
+    ["2025-02-21 21:33:00", 134, 92, 62],
+    ["2025-02-20 07:41:00", 146, 92, 57],
+    ["2025-02-20 10:50:00", 134, 89, 59],
+    ["2025-02-20 13:57:00", 149, 100, 58],
+    ["2025-02-20 15:22:00", 149, 97, 58],
+    ["2025-02-20 17:26:00", 164, 97, 57],
+    ["2025-02-20 20:33:00", 136, 89, 60],
+    ["2025-02-19 09:46:00", 135, 88, 69],
+    ["2025-02-19 12:38:00", 158, 94, 57],
+    ["2025-02-19 17:20:00", 152, 104, 55],
+    ["2025-02-19 21:14:00", 133, 84, 58]
+]
+
+# Write CSV with UTF-8 BOM
+with open('exports/health_data_20250304.csv', 'w', newline='', encoding='utf-8-sig') as file:
+    writer = csv.writer(file)
+    writer.writerows(data)
