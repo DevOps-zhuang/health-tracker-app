@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from .models import db, HealthData
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 from werkzeug.utils import secure_filename
 from .data_import import DataImporter
@@ -254,32 +254,48 @@ def import_data():
 
 @bp.route('/chart')
 def chart():
-    # Fetch all health data entries from the database, ordered by timestamp
-    entries = HealthData.query.order_by(HealthData.timestamp).all()
+    # First get the latest record to find the end date
+    latest_entry = HealthData.query.order_by(HealthData.timestamp.desc()).first()
     
-    # Format timestamps as strings that JavaScript can understand
-    formatted_timestamps = [entry.timestamp.strftime('%Y-%m-%d %H:%M:%S') for entry in entries]
-    systolic_values = [entry.systolic for entry in entries]
-    diastolic_values = [entry.diastolic for entry in entries]
-    
-    # Create data points for the chart
-    data_points = []
-    for i in range(len(entries)):
-        data_points.append({
-            'x': formatted_timestamps[i],
-            'systolic': systolic_values[i],
-            'diastolic': diastolic_values[i]
-        })
-    
-    print(f"Formatted Timestamps: {formatted_timestamps}")  # Debug information
-    print(f"Systolic Values: {systolic_values}")  # Debug information
-    print(f"Diastolic Values: {diastolic_values}")  # Debug information
-    
-    return render_template('chart.html', 
-                          timestamps=formatted_timestamps, 
-                          systolic_values=systolic_values, 
-                          diastolic_values=diastolic_values,
-                          data_points=data_points)
+    if latest_entry:
+        # Calculate the date range: 7 days before the latest entry
+        end_date = latest_entry.timestamp
+        start_date = end_date - timedelta(days=7)
+        
+        # Fetch health data entries within the date range, ordered by timestamp
+        entries = HealthData.query.filter(
+            HealthData.timestamp >= start_date,
+            HealthData.timestamp <= end_date
+        ).order_by(HealthData.timestamp).all()
+        
+        # Debug output
+        print(f"Date range: {start_date} to {end_date}")
+        print("Number of entries found:", len(entries))
+        
+        # Format timestamps as strings that JavaScript can understand
+        formatted_timestamps = [entry.timestamp.strftime('%Y-%m-%d %H:%M:%S') for entry in entries]
+        systolic_values = [entry.systolic for entry in entries]
+        diastolic_values = [entry.diastolic for entry in entries]
+        heart_rate_values = [entry.heart_rate for entry in entries]
+        
+        # Debug output
+        print("Timestamps:", formatted_timestamps)
+        print("Systolic values:", systolic_values)
+        print("Diastolic values:", diastolic_values)
+        print("Heart rate values:", heart_rate_values)
+        
+        return render_template('chart.html', 
+                            timestamps=formatted_timestamps, 
+                            systolic_values=systolic_values, 
+                            diastolic_values=diastolic_values,
+                            heart_rate_values=heart_rate_values)
+    else:
+        # If no data exists, return empty arrays
+        return render_template('chart.html', 
+                            timestamps=[], 
+                            systolic_values=[], 
+                            diastolic_values=[],
+                            heart_rate_values=[])
 
 @bp.route('/schema')
 def show_schema():
