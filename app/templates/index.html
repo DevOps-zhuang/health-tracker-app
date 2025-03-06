@@ -20,6 +20,13 @@
     {% endwith %}
 
     <form action="/add" method="POST">
+        <label for="person_id">Person:</label>
+        <select id="person_id" name="person_id" required>
+            {% for person in persons %}
+                <option value="{{ person.id }}">{{ person.name }}</option>
+            {% endfor %}
+        </select>
+
         <div class="blood-pressure-group">
             <label>Blood Pressure:</label>
             <div class="bp-inputs">
@@ -50,6 +57,7 @@
     <table class="table">
         <thead>
             <tr>
+                <th>Person</th>
                 <th>Date/Time</th>
                 <th>Systolic</th>
                 <th>Diastolic</th>
@@ -61,6 +69,7 @@
         <tbody>
             {% for entry in entries %}
                 <tr>
+                    <td>{{ entry.person.name }}</td>
                     <td>{{ entry.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
                     <td>{{ entry.systolic }}</td>
                     <td>{{ entry.diastolic }}</td>
