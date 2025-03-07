@@ -1,10 +1,14 @@
 import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager
 from config import get_config
 
 # Initialize database
 db = SQLAlchemy()
+# Initialize login manager
+login_manager = LoginManager()
+login_manager.login_view = 'auth.login'
 
 def create_app():
     # Initialize Flask app
@@ -15,12 +19,17 @@ def create_app():
     
     # Initialize database with app
     db.init_app(app)
+    # Initialize login manager with app
+    login_manager.init_app(app)
     
     # Import models and routes after initializing db
-    from . import models, routes
+    from . import models, routes, views
+    from .auth import bp as auth_bp
     
     # Register blueprints
     app.register_blueprint(routes.bp)
+    app.register_blueprint(views.bp, url_prefix='/api')
+    app.register_blueprint(auth_bp)
     
     # Ensure the instance folder exists
     try:
@@ -33,6 +42,12 @@ def create_app():
         db.create_all()
     
     return app
+
+# User loader callback for login manager
+@login_manager.user_loader
+def load_user(id):
+    from .models import User
+    return User.query.get(int(id))
 
 # Do not create the app instance here
 # Let it be created by the calling module

@@ -38,13 +38,29 @@ class DataImporter:
             
         return True, ""
 
+    @staticmethod
+    def is_duplicate_entry(user_id, timestamp):
+        """
+        Check if an entry with the given user_id and timestamp already exists.
+        
+        Args:
+            user_id (int): User ID to check
+            timestamp (datetime): Timestamp to check
+        
+        Returns:
+            bool: True if entry exists, False otherwise
+        """
+        existing = HealthData.query.filter_by(user_id=user_id, timestamp=timestamp).first()
+        return existing is not None
+
     @classmethod
-    def import_from_csv(cls, file_path, date_format='%Y-%m-%d %H:%M:%S'):
+    def import_from_csv(cls, file_path, user_id, date_format='%Y-%m-%d %H:%M:%S'):
         """
         Import health data from a CSV file.
         
         Args:
             file_path (str): Path to the CSV file
+            user_id (int): User ID to associate with the imported data
             date_format (str): Format of the date/time in the CSV
             
         Returns:
@@ -53,7 +69,8 @@ class DataImporter:
         results = {
             'success': 0,
             'failure': 0,
-            'errors': []
+            'errors': [],
+            'duplicates': 0
         }
         
         try:
@@ -76,16 +93,34 @@ class DataImporter:
                             continue
                             
                         # Skip rows with placeholder values
-                        if '--' in row:
+                        if '--' in row or any(val.strip() == '' for val in row[:4]):
                             results['failure'] += 1
-                            results['errors'].append(f"Row contains placeholder values: {row}")
+                            results['errors'].append(f"Row contains placeholder or empty values: {row}")
                             continue
                         
                         # Parse values from the row (timestamp, systolic, diastolic, heart_rate)
                         timestamp_str = row[0].strip()
-                        systolic = int(float(row[1]))
-                        diastolic = int(float(row[2]))
-                        heart_rate = int(float(row[3]))
+                        try:
+                            timestamp = datetime.strptime(timestamp_str, date_format)
+                        except ValueError:
+                            results['failure'] += 1
+                            results['errors'].append(f"Invalid timestamp format: {timestamp_str}")
+                            continue
+
+                        # Check for duplicate before processing further
+                        if cls.is_duplicate_entry(user_id, timestamp):
+                            results['duplicates'] += 1
+                            results['errors'].append(f"Duplicate entry found for timestamp: {timestamp_str}")
+                            continue
+                        
+                        try:
+                            systolic = int(float(row[1]))
+                            diastolic = int(float(row[2]))
+                            heart_rate = int(float(row[3]))
+                        except (ValueError, TypeError):
+                            results['failure'] += 1
+                            results['errors'].append(f"Invalid numeric values in row: {row}")
+                            continue
                         
                         # Validate data
                         is_valid, error_msg = cls.validate_data(systolic, diastolic, heart_rate)
@@ -94,20 +129,13 @@ class DataImporter:
                             results['errors'].append(f"Row validation failed: {error_msg}")
                             continue
                         
-                        # Parse timestamp
-                        try:
-                            timestamp = datetime.strptime(timestamp_str, date_format)
-                        except ValueError:
-                            results['failure'] += 1
-                            results['errors'].append(f"Invalid timestamp format: {timestamp_str}")
-                            continue
-                        
                         # Create new health data entry
                         new_entry = HealthData(
                             systolic=systolic,
                             diastolic=diastolic,
                             heart_rate=heart_rate,
-                            timestamp=timestamp
+                            timestamp=timestamp,
+                            user_id=user_id  # Add user_id to the new entry
                         )
                         
                         # Add to database
@@ -144,7 +172,8 @@ class DataImporter:
         results = {
             'success': 0,
             'failure': 0,
-            'errors': []
+            'errors': [],
+            'duplicates': 0
         }
         
         try:
@@ -164,11 +193,38 @@ class DataImporter:
                 try:
                     # Extract values
                     timestamp = row['timestamp']
-                    systolic = int(row['systolic'])
-                    diastolic = int(row['diastolic'])
-                    heart_rate = int(row['heart_rate'])
-                    tags = row.get('tags', '')
-                    
+                    if pd.isna(timestamp) or timestamp == '--':
+                        results['failure'] += 1
+                        results['errors'].append(f"Invalid timestamp: {timestamp}")
+                        continue
+
+                    # Ensure timestamp is datetime
+                    if isinstance(timestamp, str):
+                        try:
+                            timestamp = datetime.strptime(timestamp, date_format or '%Y-%m-%d %H:%M:%S')
+                        except ValueError:
+                            results['failure'] += 1
+                            results['errors'].append(f"Invalid timestamp format: {timestamp}")
+                            continue
+                    elif isinstance(timestamp, pd.Timestamp):
+                        timestamp = timestamp.to_pydatetime()
+
+                    # Check for duplicate before processing further
+                    if cls.is_duplicate_entry(timestamp):
+                        results['duplicates'] += 1
+                        results['errors'].append(f"Duplicate entry found for timestamp: {timestamp}")
+                        continue
+
+                    # Extract and validate numeric values
+                    try:
+                        systolic = int(float(row['systolic']))
+                        diastolic = int(float(row['diastolic']))
+                        heart_rate = int(float(row['heart_rate']))
+                    except (ValueError, TypeError):
+                        results['failure'] += 1
+                        results['errors'].append(f"Invalid numeric values in row")
+                        continue
+
                     # Validate data
                     is_valid, error_msg = cls.validate_data(systolic, diastolic, heart_rate)
                     if not is_valid:
@@ -176,17 +232,8 @@ class DataImporter:
                         results['errors'].append(f"Row validation failed: {error_msg}")
                         continue
                     
-                    # Ensure timestamp is datetime
-                    if not isinstance(timestamp, (datetime, pd.Timestamp)):
-                        results['failure'] += 1
-                        results['errors'].append(f"Invalid timestamp format: {timestamp}")
-                        continue
+                    tags = row.get('tags', '')
                     
-                    # Convert pandas timestamp to datetime if needed
-                    if isinstance(timestamp, pd.Timestamp):
-                        timestamp = timestamp.to_pydatetime()
-                    
-                    # Create new health data entry
                     new_entry = HealthData(
                         systolic=systolic,
                         diastolic=diastolic,
@@ -229,7 +276,8 @@ class DataImporter:
         results = {
             'success': 0,
             'failure': 0,
-            'errors': []
+            'errors': [],
+            'duplicates': 0
         }
         
         try:
@@ -257,9 +305,27 @@ class DataImporter:
                         
                         # Extract values using field indices
                         timestamp_str = values[field_indices['timestamp']]
-                        systolic = int(float(values[field_indices['systolic']]))
-                        diastolic = int(float(values[field_indices['diastolic']]))
-                        heart_rate = int(float(values[field_indices['heart_rate']]))
+                        try:
+                            timestamp = datetime.strptime(timestamp_str, date_format)
+                        except ValueError:
+                            results['failure'] += 1
+                            results['errors'].append(f"Line {line_num}: Invalid timestamp format: {timestamp_str}")
+                            continue
+
+                        # Check for duplicate before processing further
+                        if cls.is_duplicate_entry(timestamp):
+                            results['duplicates'] += 1
+                            results['errors'].append(f"Duplicate entry found for timestamp: {timestamp_str}")
+                            continue
+
+                        try:
+                            systolic = int(float(values[field_indices['systolic']]))
+                            diastolic = int(float(values[field_indices['diastolic']]))
+                            heart_rate = int(float(values[field_indices['heart_rate']]))
+                        except (ValueError, TypeError):
+                            results['failure'] += 1
+                            results['errors'].append(f"Line {line_num}: Invalid numeric values")
+                            continue
                         
                         # Extract tags if present
                         tags = values[field_indices['tags']] if 'tags' in field_indices else ''
@@ -269,14 +335,6 @@ class DataImporter:
                         if not is_valid:
                             results['failure'] += 1
                             results['errors'].append(f"Line {line_num}: {error_msg}")
-                            continue
-                        
-                        # Parse timestamp
-                        try:
-                            timestamp = datetime.strptime(timestamp_str, date_format)
-                        except ValueError:
-                            results['failure'] += 1
-                            results['errors'].append(f"Line {line_num}: Invalid timestamp format: {timestamp_str}")
                             continue
                         
                         # Create new health data entry

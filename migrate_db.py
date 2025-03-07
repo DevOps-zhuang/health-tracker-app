@@ -1,12 +1,15 @@
 import os
 import sqlite3
-from app import app, db
+from app import create_app, db
+from app.models import User
 
-def migrate_blood_pressure_data():
+# Create an instance of the app
+app = create_app()
+
+def migrate_health_data():
     """
-    This script migrates the database from the old schema (with blood_pressure as a string)
-    to the new schema (with separate systolic and diastolic integer fields).
-    It preserves all existing data.
+    This script migrates the database to include the user_id column in the health_data table.
+    It assigns existing health data to the first user in the database.
     """
     db_path = 'instance/health_tracker.sqlite'
     
@@ -30,68 +33,32 @@ def migrate_blood_pressure_data():
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
-        # Check if the old schema is still in place
+        # Check if the user_id column already exists
         cursor.execute("PRAGMA table_info(health_data)")
         columns = cursor.fetchall()
         columns_dict = {col[1]: col for col in columns}
         
-        if 'blood_pressure' in columns_dict and 'systolic' not in columns_dict:
-            print("Migrating from old schema to new schema...")
+        if 'user_id' not in columns_dict:
+            print("Adding user_id column to health_data table...")
             
-            # Get all existing data
-            cursor.execute("SELECT id, blood_pressure, heart_rate, tags, timestamp FROM health_data")
-            rows = cursor.fetchall()
+            # Add user_id column
+            cursor.execute("ALTER TABLE health_data ADD COLUMN user_id INTEGER")
             
-            # Create a temporary table with the new schema
-            cursor.execute("""
-            CREATE TABLE health_data_new (
-                id INTEGER PRIMARY KEY,
-                systolic INTEGER NOT NULL,
-                diastolic INTEGER NOT NULL,
-                heart_rate INTEGER NOT NULL,
-                tags TEXT,
-                timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-            )
-            """)
+            # Get the first user (assuming the first user is the one to assign existing data to)
+            with app.app_context():
+                first_user = User.query.first()
+                if not first_user:
+                    print("No users found in the database. Please register a user first.")
+                    return
+                user_id = first_user.id
             
-            # Migrate data to the new table
-            for row in rows:
-                id, blood_pressure, heart_rate, tags, timestamp = row
-                
-                # Parse blood pressure string (e.g., "120/80")
-                try:
-                    systolic, diastolic = blood_pressure.split('/')
-                    systolic = int(systolic.strip())
-                    diastolic = int(diastolic.strip())
-                except (ValueError, AttributeError):
-                    # If parsing fails, use default values and log the issue
-                    print(f"Warning: Could not parse blood pressure value '{blood_pressure}' for ID {id}. Using default values.")
-                    systolic = 120
-                    diastolic = 80
-                
-                # Convert heart_rate to integer if it's stored as string
-                try:
-                    heart_rate = int(heart_rate)
-                except (ValueError, TypeError):
-                    print(f"Warning: Could not convert heart rate '{heart_rate}' to integer for ID {id}. Using default value.")
-                    heart_rate = 70
-                
-                # Insert into new table
-                cursor.execute(
-                    "INSERT INTO health_data_new (id, systolic, diastolic, heart_rate, tags, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
-                    (id, systolic, diastolic, heart_rate, tags, timestamp)
-                )
-            
-            # Replace the old table with the new one
-            cursor.execute("DROP TABLE health_data")
-            cursor.execute("ALTER TABLE health_data_new RENAME TO health_data")
+            # Update existing health data with the user_id
+            cursor.execute("UPDATE health_data SET user_id = ?", (user_id,))
             conn.commit()
             print("Migration completed successfully!")
         
-        elif 'systolic' in columns_dict and 'diastolic' in columns_dict:
-            print("Database already has the new schema. No migration needed.")
         else:
-            print("Unexpected database schema. Migration aborted.")
+            print("Database already has the user_id column. No migration needed.")
             
     except Exception as e:
         conn.rollback()
@@ -102,7 +69,7 @@ def migrate_blood_pressure_data():
 
 if __name__ == "__main__":
     # Run the migration
-    migrate_blood_pressure_data()
+    migrate_health_data()
     print("Database migration script completed.")
 
 # Generated by Copilot

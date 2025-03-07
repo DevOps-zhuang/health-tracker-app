@@ -6,13 +6,13 @@ from app import app, db
 os.makedirs('instance', exist_ok=True)
 
 # Remove the existing database file if it exists
-db_path = 'instance/health_tracker.sqlite'
-if os.path.exists(db_path):
-    try:
-        os.remove(db_path)
-        print(f"Removed existing database at {db_path}")
-    except Exception as e:
-        print(f"Warning: Could not remove existing database: {e}")
+# db_path = 'instance/health_tracker.sqlite'
+# if os.path.exists(db_path):
+#     try:
+#         os.remove(db_path)
+#         print(f"Removed existing database at {db_path}")
+#     except Exception as e:
+#         print(f"Warning: Could not remove existing database: {e}")
 
 # Create new database tables
 with app.app_context():

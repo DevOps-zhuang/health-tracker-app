@@ -1,5 +1,27 @@
 from datetime import datetime
+from flask_login import UserMixin
+from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
+
+class User(UserMixin, db.Model):
+    __tablename__ = 'users'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(64), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128))
+    name = db.Column(db.String(64))
+    gender = db.Column(db.String(10))
+    age = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # 一对多关系：一个用户可以有多个健康数据记录
+    health_records = db.relationship('HealthData', backref='user', lazy='dynamic')
+    
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+        
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
 
 class HealthData(db.Model):
     __tablename__ = 'health_data'
@@ -10,6 +32,7 @@ class HealthData(db.Model):
     heart_rate = db.Column(db.Integer, nullable=False)  # Heart rate reading
     tags = db.Column(db.String(100), nullable=True)  # Tags for categorizing the entry
     timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)  # Timestamp for the entry
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     
     @property
     def blood_pressure(self):

@@ -1,18 +1,24 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
+from flask_login import login_required, current_user
 from .models import db, HealthData
 from datetime import datetime, timedelta
 import os
 from werkzeug.utils import secure_filename
 from .data_import import DataImporter
+from time import time
 
 # Create a Blueprint for the routes
 bp = Blueprint('main', __name__)
 
 @bp.route('/')
+@login_required
 def index():
-    # Fetch all health data entries from the database, ordered by timestamp
-    entries = HealthData.query.order_by(HealthData.timestamp.desc()).all()
-    return render_template('index.html', entries=entries)
+    start_time = time()  # Start time for query
+    entries = HealthData.query.filter_by(user_id=current_user.id).order_by(HealthData.timestamp.desc()).all()
+    end_time = time()  # End time for query
+    query_time = end_time - start_time
+    current_app.logger.info(f'Database query time: {query_time:.4f} seconds')
+    return render_template('index.html', entries=entries, user=current_user)
 
 def validate_systolic(systolic_str):
     try:
@@ -42,6 +48,7 @@ def validate_heart_rate(hr_str):
         return False, "Heart rate must be a number"
 
 @bp.route('/add', methods=['POST'])
+@login_required
 def add_health_data():
     systolic = request.form.get('systolic')
     diastolic = request.form.get('diastolic')
@@ -85,17 +92,23 @@ def add_health_data():
     else:
         timestamp = datetime.utcnow()
 
+    # Check for duplicate timestamp for the current user
+    if DataImporter.is_duplicate_entry(current_user.id, timestamp):
+        flash('A record with the same date and time already exists for this user.')
+        return redirect(url_for('main.index'))
+
     # Create a new health data entry
     new_entry = HealthData(
         systolic=systolic_value,
         diastolic=diastolic_value,
         heart_rate=heart_rate_value,
         tags=tags,
-        timestamp=timestamp
+        timestamp=timestamp,
+        user_id=current_user.id  # 添加用户ID
     )
     db.session.add(new_entry)
     db.session.commit()
-
+    flash('Entry added successfully!')
     return redirect(url_for('main.index'))
 
 @bp.route('/edit/<int:id>', methods=['GET', 'POST'])
@@ -144,6 +157,12 @@ def edit_health_data(id):
         else:
             timestamp = datetime.utcnow()
 
+        # Check for duplicate timestamp for the current user, excluding current entry
+        existing = HealthData.query.filter_by(user_id=current_user.id, timestamp=timestamp).first()
+        if existing and existing.id != id:
+            flash('A record with the same date and time already exists for this user.')
+            return redirect(url_for('main.edit_health_data', id=id))
+
         # Update the health data entry
         entry.systolic = systolic_value
         entry.diastolic = diastolic_value
@@ -152,6 +171,7 @@ def edit_health_data(id):
         entry.timestamp = timestamp
 
         db.session.commit()
+        flash('Entry updated successfully!')
         return redirect(url_for('main.index'))
 
     return render_template('edit.html', entry=entry)
@@ -216,7 +236,7 @@ def import_data():
         results = None
         try:
             if import_format == 'csv':
-                results = DataImporter.import_from_csv(filepath, date_format=date_format)
+                results = DataImporter.import_from_csv(filepath, current_user.id, date_format=date_format)  # Pass user_id
             elif import_format == 'excel':
                 results = DataImporter.import_from_excel(filepath)
             elif import_format == 'image':
@@ -229,6 +249,10 @@ def import_data():
                 
             # Show import results
             flash(f'Import completed: {results["success"]} records imported successfully, {results["failure"]} failures')
+            if results.get('duplicates', 0) > 0:
+                flash(f'{results["duplicates"]} duplicate records were skipped')
+            if results['failure'] > 0:
+                flash(f'{results["failure"]} records failed to import')
             
             # Show errors if any
             if results['errors']:
@@ -253,9 +277,10 @@ def import_data():
     return render_template('import.html')
 
 @bp.route('/chart')
+@login_required
 def chart():
     # First get the latest record to find the end date
-    latest_entry = HealthData.query.order_by(HealthData.timestamp.desc()).first()
+    latest_entry = HealthData.query.filter_by(user_id=current_user.id).order_by(HealthData.timestamp.desc()).first()
     
     if latest_entry:
         # Calculate the date range: 7 days before the latest entry
@@ -264,6 +289,7 @@ def chart():
         
         # Fetch health data entries within the date range, ordered by timestamp
         entries = HealthData.query.filter(
+            HealthData.user_id == current_user.id,
             HealthData.timestamp >= start_date,
             HealthData.timestamp <= end_date
         ).order_by(HealthData.timestamp).all()
@@ -294,7 +320,7 @@ def chart():
         return render_template('chart.html', 
                             timestamps=[], 
                             systolic_values=[], 
-                            diastolic_values=[],
+                            diastolic_values=[], 
                             heart_rate_values=[])
 
 @bp.route('/schema')

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>注册 - Health Tracker</title>
+</head>
+<body>
+    <h1>新用户注册</h1>
+    
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <form method="POST">
+        <div class="form-group">
+            <label for="username">用户名:</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="password">密码:</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="name">姓名:</label>
+            <input type="text" id="name" name="name" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="gender">性别:</label>
+            <select id="gender" name="gender" required>
+                <option value="male">男</option>
+                <option value="female">女</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="age">年龄:</label>
+            <input type="number" id="age" name="age" required min="1" max="120">
+        </div>
+        
+        <button type="submit">注册</button>
+    </form>
+    
+    <p>已有账号? <a href="{{ url_for('auth.login') }}">登录</a></p>
+</body>
+</html>
