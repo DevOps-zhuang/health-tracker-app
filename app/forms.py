@@ -11,7 +11,6 @@ class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=4, max=25)])
     password = PasswordField('Password', validators=[DataRequired(), Length(min=6, max=25), EqualTo('confirm', message='Passwords must match')])
     confirm = PasswordField('Repeat Password')
-    name = StringField('Name', validators=[DataRequired(), Length(min=2, max=50)])
     gender = SelectField('Gender', choices=[('male', 'Male'), ('female', 'Female')], validators=[DataRequired()])
     age = IntegerField('Age', validators=[DataRequired()])
     submit = SubmitField('Register')

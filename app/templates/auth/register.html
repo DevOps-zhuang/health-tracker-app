@@ -4,11 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <title>注册 - Health Tracker</title>
+    <title>Register - Health Tracker</title>
 </head>
 <body>
-    <h1>新用户注册</h1>
+    <h1>Register</h1>
     
+    <!-- 
+
+        This template snippet is used to display flashed messages to the user.
+        - `get_flashed_messages()`: A function that retrieves messages flashed to the session.
+        - If there are any messages, it iterates over them and displays each message inside a div with the class "alert".
+    -->
     {% with messages = get_flashed_messages() %}
         {% if messages %}
             {% for message in messages %}
@@ -19,36 +25,31 @@
     
     <form method="POST">
         <div class="form-group">
-            <label for="username">用户名:</label>
+            <label for="username">Username:</label>
             <input type="text" id="username" name="username" required>
         </div>
         
         <div class="form-group">
-            <label for="password">密码:</label>
+            <label for="password">Password:</label>
             <input type="password" id="password" name="password" required>
         </div>
         
         <div class="form-group">
-            <label for="name">姓名:</label>
-            <input type="text" id="name" name="name" required>
-        </div>
-        
-        <div class="form-group">
-            <label for="gender">性别:</label>
+            <label for="gender">Gender:</label>
             <select id="gender" name="gender" required>
-                <option value="male">男</option>
-                <option value="female">女</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
             </select>
         </div>
         
         <div class="form-group">
-            <label for="age">年龄:</label>
+            <label for="age">Age:</label>
             <input type="number" id="age" name="age" required min="1" max="120">
         </div>
         
-        <button type="submit">注册</button>
+        <button type="submit">Register</button>
     </form>
     
-    <p>已有账号? <a href="{{ url_for('auth.login') }}">登录</a></p>
+    <p>Already have an account? <a href="{{ url_for('auth.login') }}">Login</a></p>
 </body>
 </html>

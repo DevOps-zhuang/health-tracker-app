@@ -23,7 +23,6 @@ def register():
     if request.method == 'POST':
         user = User(
             username=request.form.get('username'),
-            name=request.form.get('name'),
             gender=request.form.get('gender'),
             age=request.form.get('age')
         )

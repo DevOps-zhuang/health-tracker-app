@@ -6,14 +6,23 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <title>Health Tracker</title>
     <style>
-        .action-buttons {
-            margin: 20px 0;
+        .header {
             display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .header-right {
+            display: inline-flex;
+            align-items: center;
             gap: 10px;
+            margin-right: 20px;  /* 给右侧按钮组添加一些边距 */
         }
         .btn {
-            display: inline-block;
-            padding: 10px 15px;
+            display: inline-flex;
+            padding: 8px 15px;
             color: white;
             text-decoration: none;
             border-radius: 4px;
@@ -21,34 +30,57 @@
             border: none;
             font-weight: bold;
             transition: all 0.3s ease;
+            white-space: nowrap;
+            align-items: center;
         }
         .btn:hover {
             opacity: 0.8;
             transform: scale(1.05);
         }
-        .btn-info {
-            background-color: #5bc0de;
+        .btn-info { background-color: #5bc0de; }
+        .btn-import { background-color: #28a745; }
+        .btn-edit { background-color: #ffc107; color: #000; }
+        .btn-save { background-color: #28a745; }
+        .btn-cancel { background-color: #6c757d; }
+        .btn-delete { background-color: #dc3545; }
+        
+        /* 移除所有冲突的样式 */
+        .header-buttons, .action-buttons {
+            display: none !important;
         }
-        .btn-import {
-            background-color: #28a745;
+        .welcome {
+            margin: 10px 0;
+            padding: 10px 15px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .btn-edit {
-            background-color: #ffc107;
-            color: #000;
+        .welcome p {
+            margin: 0;
+            font-size: 1.2em;
+            color: #2c3e50;
+            font-weight: 500;
         }
-        .btn-save {
-            background-color: #28a745;
-        }
-        .btn-cancel {
-            background-color: #6c757d;
-        }
-        .btn-delete {
-            background-color: #dc3545;
+        .welcome p strong {
+            color: #007bff;
+            font-weight: 600;
         }
     </style>
 </head>
 <body>
-    <h1>Health Tracker</h1>
+    <div class="header">
+        <div class="header-left">
+            <h1>Health Tracker</h1>
+            <div class="welcome">
+                <p>Welcome, <strong>{{ user.username }}</strong></p>
+            </div>
+        </div>
+        <div class="header-right">
+            <a href="/chart" class="btn btn-info">View Blood Pressure Chart</a>
+            <a href="/import" class="btn btn-import">Import Data</a>
+            <a href="{{ url_for('auth.logout') }}" class="btn btn-cancel">Logout</a>
+        </div>
+    </div>
     
     {% with messages = get_flashed_messages() %}
         {% if messages %}
@@ -60,11 +92,6 @@
         {% endif %}
     {% endwith %}
     
-    <div>
-        <p>Welcome, {{ user.name }} ({{ user.username }})</p>
-        <a href="{{ url_for('auth.logout') }}" class="btn btn-cancel">Logout</a>
-    </div>
-
     <form id="entryForm" action="/add" method="POST" onsubmit="return checkDuplicate()">
         <div class="blood-pressure-group">
             <label>Blood Pressure:</label>
@@ -91,11 +118,6 @@
         
         <button type="submit">Add Entry</button>
     </form>
-
-    <div class="action-buttons">
-        <a href="/chart" class="btn btn-info">View Blood Pressure Chart</a>
-        <a href="/import" class="btn btn-import">Import Data</a>
-    </div>
 
     <h2>Existing Entries</h2>
     <table class="table">

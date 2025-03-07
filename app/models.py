@@ -9,7 +9,6 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), unique=True, nullable=False)
     password_hash = db.Column(db.String(128))
-    name = db.Column(db.String(64))
     gender = db.Column(db.String(10))
     age = db.Column(db.Integer)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

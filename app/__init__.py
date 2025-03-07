@@ -2,6 +2,7 @@ import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
+from flask_migrate import Migrate
 from config import get_config
 
 # Initialize database
@@ -21,6 +22,9 @@ def create_app():
     db.init_app(app)
     # Initialize login manager with app
     login_manager.init_app(app)
+    
+    # Initialize Flask-Migrate
+    migrate = Migrate(app, db)
     
     # Import models and routes after initializing db
     from . import models, routes, views
