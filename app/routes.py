@@ -295,20 +295,26 @@ def chart():
         ).order_by(HealthData.timestamp).all()
         
         # Debug output
+        """
         print(f"Date range: {start_date} to {end_date}")
         print("Number of entries found:", len(entries))
-        
+        """
+
         # Format timestamps as strings that JavaScript can understand
         formatted_timestamps = [entry.timestamp.strftime('%Y-%m-%d %H:%M:%S') for entry in entries]
         systolic_values = [entry.systolic for entry in entries]
         diastolic_values = [entry.diastolic for entry in entries]
         heart_rate_values = [entry.heart_rate for entry in entries]
         
+        
         # Debug output
+        """
         print("Timestamps:", formatted_timestamps)
         print("Systolic values:", systolic_values)
         print("Diastolic values:", diastolic_values)
         print("Heart rate values:", heart_rate_values)
+        """
+
         
         return render_template('chart.html', 
                             timestamps=formatted_timestamps, 
