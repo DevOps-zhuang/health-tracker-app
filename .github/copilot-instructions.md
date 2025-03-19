@@ -1,0 +1,8 @@
+
+This project will support python 3.12 or above version
+
+For Python flask,it should be 2.33 or above version.
+
+Always use class and its method,property in Python code. not use function directly.
+
+Always add comments.
