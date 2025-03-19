@@ -31,6 +31,12 @@
         <button type="submit">Login</button>
     </form>
     
+    <div id="countdown-container">
+        Session expires in: <span id="countdown">30</span> seconds
+    </div>
+    
     <p>Don't have an account? <a href="{{ url_for('auth.register') }}">Register</a></p>
+    
+    <script src="{{ url_for('static', filename='login.js') }}"></script>
 </body>
 </html>
