@@ -6,3 +6,7 @@ For Python flask,it should be 2.33 or above version.
 Always use class and its method,property in Python code. not use function directly.
 
 Always add comments.
+
+The code should be in English, it inclusing the codeitself, and the print,log part.
+
+please remember, it is an international app, so Engish should be used firstly.
