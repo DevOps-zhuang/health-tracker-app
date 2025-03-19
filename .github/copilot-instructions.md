@@ -7,6 +7,6 @@ Always use class and its method,property in Python code. not use function direct
 
 Always add comments.
 
-The code should be in English, it inclusing the codeitself, and the print,log part.
+The code should be in English, it means the codeitself, and the print,log part should also be in English
 
 please remember, it is an international app, so Engish should be used firstly.
