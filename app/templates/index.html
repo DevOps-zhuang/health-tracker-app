@@ -18,7 +18,7 @@
             display: inline-flex;
             align-items: center;
             gap: 10px;
-            margin-right: 20px;  /* 给右侧按钮组添加一些边距 */
+            margin-right: 20px;  /* Add some margin to the right button group */
         }
         .btn {
             display: inline-flex;
@@ -44,7 +44,7 @@
         .btn-cancel { background-color: #6c757d; }
         .btn-delete { background-color: #dc3545; }
         
-        /* 移除所有冲突的样式 */
+        /* Remove all conflicting styles */
         .header-buttons, .action-buttons {
             display: none !important;
         }
@@ -139,7 +139,7 @@
                     <td class="display-mode">{{ entry.diastolic }}</td>
                     <td class="display-mode">{{ entry.heart_rate }}</td>
                     <td class="display-mode">{{ entry.tags }}</td>
-                    <!-- 编辑模式的输入框，默认隐藏 -->
+                    <!-- Edit mode input fields, hidden by default -->
                     <td class="edit-mode" style="display: none;">
                         <input type="datetime-local" value="{{ entry.timestamp.strftime('%Y-%m-%dT%H:%M') }}" class="editable-field" data-field="timestamp">
                     </td>
@@ -156,10 +156,10 @@
                         <input type="text" value="{{ entry.tags }}" class="editable-field" data-field="tags">
                     </td>
                     <td>
-                        <button onclick="toggleEdit({{ entry.id }})" class="btn btn-edit">编辑</button>
-                        <button onclick="saveChanges({{ entry.id }})" class="btn btn-save" style="display: none;">保存</button>
-                        <button onclick="cancelEdit({{ entry.id }})" class="btn btn-cancel" style="display: none;">取消</button>
-                        <button onclick="deleteEntry({{ entry.id }})" class="btn btn-delete">删除</button>
+                        <button onclick="toggleEdit({{ entry.id }})" class="btn btn-edit">Edit</button>
+                        <button onclick="saveChanges({{ entry.id }})" class="btn btn-save" style="display: none;">Save</button>
+                        <button onclick="cancelEdit({{ entry.id }})" class="btn btn-cancel" style="display: none;">Cancel</button>
+                        <button onclick="deleteEntry({{ entry.id }})" class="btn btn-delete">Delete</button>
                     </td>
                 </tr>
             {% endfor %}
@@ -217,20 +217,20 @@
         .then(response => response.json())
         .then(result => {
             if (result.success) {
-                alert('保存成功！');
+                alert('Saved successfully!');
                 location.reload();
             } else {
-                alert(result.message || '保存失败，请重试！');
+                alert(result.message || 'Save failed, please try again!');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('保存失败，请检查控制台获取详细信息');
+            alert('Save failed, please check console for details');
         });
     }
 
     function deleteEntry(entryId) {
-        if (confirm('确定要删除这条记录吗？')) {
+        if (confirm('Are you sure you want to delete this record?')) {
             fetch(`/api/delete/${entryId}`, {
                 method: 'POST',
                 headers: {
@@ -240,15 +240,15 @@
             .then(response => response.json())
             .then(result => {
                 if (result.success) {
-                    alert('删除成功！');
+                    alert('Deleted successfully!');
                     location.reload();
                 } else {
-                    alert(result.message || '删除失败，请重试！');
+                    alert(result.message || 'Delete failed, please try again!');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('删除失败，请检查控制台获取详细信息');
+                alert('Delete failed, please check console for details');
             });
         }
     }
