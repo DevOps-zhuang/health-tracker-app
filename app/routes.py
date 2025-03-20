@@ -6,6 +6,7 @@ import os
 from werkzeug.utils import secure_filename
 from .data_import import DataImporter
 from time import time
+from .utils import HealthDataHandler
 
 # Create a Blueprint for the routes
 bp = Blueprint('main', __name__)
@@ -50,138 +51,38 @@ def validate_heart_rate(hr_str):
 @bp.route('/add', methods=['POST'])
 @login_required
 def add_health_data():
-    systolic = request.form.get('systolic')
-    diastolic = request.form.get('diastolic')
-    heart_rate = request.form.get('heart_rate')
-    tags = request.form.get('tags')
-    timestamp_str = request.form.get('timestamp')
-
-    # Validate systolic pressure
-    sys_valid, sys_result = validate_systolic(systolic)
-    if not sys_valid:
-        flash(sys_result)
-        return redirect(url_for('main.index'))
-    systolic_value = sys_result
-
-    # Validate diastolic pressure
-    dias_valid, dias_result = validate_diastolic(diastolic)
-    if not dias_valid:
-        flash(dias_result)
-        return redirect(url_for('main.index'))
-    diastolic_value = dias_result
-
-    # Ensure systolic is greater than diastolic
-    if systolic_value <= diastolic_value:
-        flash("Systolic pressure must be greater than diastolic pressure")
-        return redirect(url_for('main.index'))
-
-    # Validate heart rate
-    hr_valid, hr_result = validate_heart_rate(heart_rate)
-    if not hr_valid:
-        flash(hr_result)
-        return redirect(url_for('main.index'))
-    heart_rate_value = hr_result
-
-    # Process timestamp
-    if timestamp_str:
-        try:
-            timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M')
-        except ValueError:
-            flash("Invalid date format")
-            return redirect(url_for('main.index'))
+    handler = HealthDataHandler()
+    result = handler.add_entry(request.form, current_user.id)
+    if result['success']:
+        flash('Entry added successfully!')
     else:
-        timestamp = datetime.utcnow()
-
-    # Check for duplicate timestamp for the current user
-    if DataImporter.is_duplicate_entry(current_user.id, timestamp):
-        flash('A record with the same date and time already exists for this user.')
-        return redirect(url_for('main.index'))
-
-    # Create a new health data entry
-    new_entry = HealthData(
-        systolic=systolic_value,
-        diastolic=diastolic_value,
-        heart_rate=heart_rate_value,
-        tags=tags,
-        timestamp=timestamp,
-        user_id=current_user.id  # 添加用户ID
-    )
-    db.session.add(new_entry)
-    db.session.commit()
-    flash('Entry added successfully!')
+        flash(result['message'])
     return redirect(url_for('main.index'))
 
 @bp.route('/edit/<int:id>', methods=['GET', 'POST'])
+@login_required
 def edit_health_data(id):
     entry = HealthData.query.get_or_404(id)
     if request.method == 'POST':
-        systolic = request.form.get('systolic')
-        diastolic = request.form.get('diastolic')
-        heart_rate = request.form.get('heart_rate')
-        tags = request.form.get('tags')
-        timestamp_str = request.form.get('timestamp')
-
-        # Validate systolic pressure
-        sys_valid, sys_result = validate_systolic(systolic)
-        if not sys_valid:
-            flash(sys_result)
-            return redirect(url_for('main.edit_health_data', id=id))
-        systolic_value = sys_result
-
-        # Validate diastolic pressure
-        dias_valid, dias_result = validate_diastolic(diastolic)
-        if not dias_valid:
-            flash(dias_result)
-            return redirect(url_for('main.edit_health_data', id=id))
-        diastolic_value = dias_result
-
-        # Ensure systolic is greater than diastolic
-        if systolic_value <= diastolic_value:
-            flash("Systolic pressure must be greater than diastolic pressure")
-            return redirect(url_for('main.edit_health_data', id=id))
-
-        # Validate heart rate
-        hr_valid, hr_result = validate_heart_rate(heart_rate)
-        if not hr_valid:
-            flash(hr_result)
-            return redirect(url_for('main.edit_health_data', id=id))
-        heart_rate_value = hr_result
-
-        # Process timestamp
-        if timestamp_str:
-            try:
-                timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M')
-            except ValueError:
-                flash("Invalid date format")
-                return redirect(url_for('main.edit_health_data', id=id))
+        handler = HealthDataHandler()
+        result = handler.update_entry(id, request.form, current_user.id)
+        if result['success']:
+            flash('Entry updated successfully!')
+            return redirect(url_for('main.index'))
         else:
-            timestamp = datetime.utcnow()
-
-        # Check for duplicate timestamp for the current user, excluding current entry
-        existing = HealthData.query.filter_by(user_id=current_user.id, timestamp=timestamp).first()
-        if existing and existing.id != id:
-            flash('A record with the same date and time already exists for this user.')
+            flash(result['message'])
             return redirect(url_for('main.edit_health_data', id=id))
-
-        # Update the health data entry
-        entry.systolic = systolic_value
-        entry.diastolic = diastolic_value
-        entry.heart_rate = heart_rate_value
-        entry.tags = tags
-        entry.timestamp = timestamp
-
-        db.session.commit()
-        flash('Entry updated successfully!')
-        return redirect(url_for('main.index'))
-
     return render_template('edit.html', entry=entry)
 
 @bp.route('/delete/<int:id>', methods=['POST'])
+@login_required
 def delete_health_data(id):
-    entry = HealthData.query.get_or_404(id)
-    db.session.delete(entry)
-    db.session.commit()
-    flash('Entry deleted successfully')
+    handler = HealthDataHandler()
+    result = handler.delete_entry(id)
+    if result['success']:
+        flash('Entry deleted successfully')
+    else:
+        flash(result['message'])
     return redirect(url_for('main.index'))
 
 @bp.route('/import', methods=['GET', 'POST'])
