@@ -4,11 +4,15 @@ on:
   push:
     branches:
       - main
-      - refactor_with_copilot
+      - Refactor_with_copilot
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout code
