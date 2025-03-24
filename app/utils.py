@@ -44,7 +44,7 @@ class HealthDataHandler:
             if not valid:
                 return {'success': False, 'message': heart_rate}
 
-            timestamp = form_data['timestamp']
+            timestamp = datetime.strptime(form_data['timestamp'], '%Y-%m-%dT%H:%M')
             tags = form_data['tags']
 
             existing_entry = HealthData.query.filter_by(timestamp=timestamp).first()
