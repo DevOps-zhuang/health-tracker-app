@@ -56,6 +56,7 @@ def add_health_data():
     if result['success']:
         flash('Entry added successfully!')
     else:
+        current_app.logger.error(result['message'])
         flash(result['message'])
     return redirect(url_for('main.index'))
 
